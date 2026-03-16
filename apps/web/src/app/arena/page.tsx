@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAccount } from "wagmi";
 
 interface AgentSummary { id: string; name: string; archetype: number; }
-interface MatchData { id: string; status: string; entryFee: string; agents: AgentSummary[]; winner: AgentSummary | null; createdAt: string; }
+interface MatchData { id: string; status: string; entryFee: string; agents: AgentSummary[]; winner: AgentSummary | null; totalTicks?: number; createdAt: string; }
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   waiting: { label: "Waiting", color: "#E0E0E0" },
@@ -54,6 +54,16 @@ export default function ArenaPage() {
       if (data.isFull) await fetch(`/api/matches/${matchId}/start`, { method: "POST" });
       await fetchMatches(); setSelectedAgent(null);
     } catch (err) { setError((err as Error).message); } finally { setEnteringMatchId(null); }
+  };
+
+  const [startingMatchId, setStartingMatchId] = useState<string | null>(null);
+  const handleStartMatch = async (matchId: string) => {
+    setStartingMatchId(matchId);
+    try {
+      const res = await fetch(`/api/matches/${matchId}/start`, { method: "POST" });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Failed to start"); }
+      await fetchMatches();
+    } catch (err) { setError((err as Error).message); } finally { setStartingMatchId(null); }
   };
 
   return (
@@ -123,17 +133,33 @@ export default function ArenaPage() {
                 </div>
                 <div>
                   {match.status === "waiting" && (
-                    <button type="button" onClick={() => handleEnterMatch(match.id)} disabled={!selectedAgent || enteringMatchId === match.id}
-                      className="cursor-pointer w-full rounded-lg border-2 border-[#FFFFFF] px-4 py-2.5 text-sm font-semibold text-[#FFFFFF] transition-all duration-200 hover:bg-[#FFFFFF]/10 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#FFFFFF]/30"
-                    >{enteringMatchId === match.id ? "Entering..." : selectedAgent ? "Enter Match" : "Select an Agent"}</button>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => handleEnterMatch(match.id)} disabled={!selectedAgent || enteringMatchId === match.id}
+                        className="cursor-pointer flex-1 rounded-lg border-2 border-[#FFFFFF] px-4 py-2.5 text-sm font-semibold text-[#FFFFFF] transition-all duration-200 hover:bg-[#FFFFFF]/10 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#FFFFFF]/30"
+                      >{enteringMatchId === match.id ? "Entering..." : selectedAgent ? "Enter Match" : "Select an Agent"}</button>
+                      {match.agents.length >= 2 && (
+                        <button type="button" onClick={() => handleStartMatch(match.id)} disabled={startingMatchId === match.id}
+                          className="cursor-pointer rounded-lg bg-[#FFFFFF] px-4 py-2.5 text-sm font-semibold text-black transition-all duration-200 hover:opacity-90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#FFFFFF]/30"
+                        >{startingMatchId === match.id ? "Starting..." : "Start"}</button>
+                      )}
+                    </div>
                   )}
                   {match.status === "InProgress" && (
                     <Link href={`/arena/${match.id}`} className="cursor-pointer flex w-full items-center justify-center rounded-lg bg-[#FFFFFF]/20 px-4 py-2.5 text-sm font-semibold text-[#FFFFFF] transition-all duration-200 hover:bg-[#FFFFFF]/30">
                       Spectate Live
                     </Link>
                   )}
-                  {match.status === "Completed" && match.winner && (
-                    <p className="text-center text-sm text-[#F8FAFC]/40">Winner: <span className="font-semibold text-[#FFFFFF]">{match.winner.name}</span></p>
+                  {match.status === "Completed" && (
+                    <div className="text-center space-y-2">
+                      {match.winner ? (
+                        <p className="text-sm text-[#F8FAFC]/40">
+                          Winner: <span className="font-semibold text-[#FFFFFF]">{match.winner.name}</span>
+                          {match.totalTicks && <span className="text-[#F8FAFC]/30"> &middot; {match.totalTicks} ticks</span>}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-[#F8FAFC]/30">Match completed</p>
+                      )}
+                    </div>
                   )}
                 </div>
               </article>

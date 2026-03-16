@@ -1,14 +1,22 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useMatchStream } from "@/hooks/useMatchStream";
 import BattleCanvas from "@/components/arena/BattleCanvas";
 import EventLog from "@/components/arena/EventLog";
 
-export default function SpectatorPage({ params }: { params: Promise<{ matchId: string }> }) {
-  const { matchId } = React.use(params);
+export default function SpectatorPage({ params }: { params: { matchId: string } }) {
+  const { matchId } = params;
   const { events, currentTick, isComplete, latestEvent } = useMatchStream(matchId);
   const winner = isComplete ? latestEvent?.agentStates.find((a) => a.isAlive) : null;
+  const settledRef = useRef(false);
+
+  // Auto-settle when match completes
+  useEffect(() => {
+    if (!isComplete || settledRef.current) return;
+    settledRef.current = true;
+    fetch(`/api/matches/${matchId}/settle`, { method: "POST" }).catch(console.error);
+  }, [isComplete, matchId]);
 
   return (
     <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6">

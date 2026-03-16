@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth";
-
 const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:3001";
 
 export async function POST(
@@ -9,10 +7,6 @@ export async function POST(
   { params }: { params: { matchId: string } }
 ) {
   try {
-    // Require SIWE authentication
-    const auth = await requireAuth();
-    if (auth instanceof NextResponse) return auth;
-
     const { matchId } = params;
 
     const match = await prisma.match.findUnique({

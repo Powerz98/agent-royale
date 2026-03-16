@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { MAX_AGENTS_PER_MATCH } from "@agent-royale/shared";
-import { requireAuth } from "@/lib/auth";
 
 export async function POST(
   request: Request,
   { params }: { params: { matchId: string } }
 ) {
   try {
-    // Require SIWE authentication
-    const auth = await requireAuth();
-    if (auth instanceof NextResponse) return auth;
-    const walletAddress = auth.toLowerCase();
-
     const { matchId } = params;
     const { agentId } = await request.json();
 
@@ -23,20 +17,12 @@ export async function POST(
       );
     }
 
-    // Verify the agent belongs to the authenticated wallet
     const agent = await prisma.agent.findUnique({
       where: { id: agentId },
     });
 
     if (!agent) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
-    }
-
-    if (agent.owner.toLowerCase() !== walletAddress) {
-      return NextResponse.json(
-        { error: "You can only enter your own agents into matches" },
-        { status: 403 }
-      );
     }
 
     const match = await prisma.match.findUnique({
@@ -71,7 +57,6 @@ export async function POST(
       data: { matchId, agentId },
     });
 
-    // Check if match is now full — auto-start
     const updatedMatch = await prisma.match.findUnique({
       where: { id: matchId },
       include: { entries: true },

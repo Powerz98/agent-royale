@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth";
-
 export async function GET() {
   try {
     const matches = await prisma.match.findMany({
@@ -25,6 +23,7 @@ export async function GET() {
       winner: match.winnerId
         ? match.entries.find((e) => e.agentId === match.winnerId)?.agent ?? null
         : null,
+      totalTicks: match.totalTicks,
       createdAt: match.createdAt.toISOString(),
     }));
 
@@ -40,10 +39,6 @@ export async function GET() {
 
 export async function POST() {
   try {
-    // Require SIWE authentication to create a match
-    const auth = await requireAuth();
-    if (auth instanceof NextResponse) return auth;
-
     const match = await prisma.match.create({
       data: {},
     });
