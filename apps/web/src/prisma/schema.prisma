@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id           String   @id @default(cuid())
+  tokenId      Int      @unique
+  name         String
+  archetype    Int
+  strength     Int
+  agility      Int
+  resilience   Int
+  intelligence Int
+  owner        String
+  elo          Int      @default(1200)
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  matchEntries MatchEntry[]
+}
+
+model Match {
+  id          String    @id @default(cuid())
+  onChainId   Int?      @unique
+  status      String    @default("waiting")
+  entryFee    String    @default("0.001")
+  winnerId    String?
+  totalTicks  Int?
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  entries MatchEntry[]
+}
+
+model MatchEntry {
+  id        String @id @default(cuid())
+  matchId   String
+  agentId   String
+  placement Int?
+
+  match Match @relation(fields: [matchId], references: [id])
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([matchId, agentId])
+}
